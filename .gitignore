@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+._*
+.vscode
+
+# npm
+npm-debug.log
+node_modules/
+
+# bower
+public/bower/
+
+# build
+dist/
