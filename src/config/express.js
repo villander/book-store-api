@@ -56,67 +56,67 @@ passport.deserializeUser((id, done) => {
 
 const strategy = new GoogleStrategy({
   clientID: '102952194911-215ajpdnkuh2uviocad792pmfam1jif2',
-  clientSecret: 'z0rlMy9mmp0d-ZT-uCkhdFkF',
+  clientSecret: 'Z-RmqwmHinAfC-m3azRm38Dc',
   callbackURL: 'http://localhost:3000/auth/google/callback'
 }, (accessToken, refreshToken, profile, done) => {
   // User.findOrCreate({ googleId: profile.id }, (err, user) => {
   //   return cb(err, user);
   // });
   const user = { profile, accessToken, refreshToken };
-  console.log(accessToken, refreshToken, 'porcaria');
+  console.log(user, 'porcaria');
   User.findOrCreate(user, done);
 });
 
 passport.use(strategy);
 refresh.use(strategy);
 
-const rule = new schedule.RecurrenceRule();
-rule.minute = new schedule.Range(0, 59, 1);
+// const rule = new schedule.RecurrenceRule();
+// rule.minute = new schedule.Range(0, 59, 1);
 
 
-function requestBooks(req, res) {
+// function requestBooks(req, res) {
 
-  function send401Response() {
-    return res.status(401).end();
-  }
+//   function send401Response() {
+//     return res.status(401).end();
+//   }
 
-  User.findById(req.user._id, (err, user) => {
-    if (err || !user) {
-      return send401Response();
-    }
-    const options = {
-      url: 'https://www.googleapis.com/books/v1/mylibrary/bookshelves?key=z0rlMy9mmp0d-ZT-uCkhdFkF',
-      headers: {
-        Authorization: `Bearer ${user.google.accessToken}`
-      }
-    };
+//   User.findById(req.user._id, (err, user) => {
+//     if (err || !user) {
+//       return send401Response();
+//     }
+//     const options = {
+//       url: 'https://www.googleapis.com/books/v1/mylibrary/bookshelves?key=z0rlMy9mmp0d-ZT-uCkhdFkF',
+//       headers: {
+//         Authorization: `Bearer ${user.google.accessToken}`
+//       }
+//     };
 
-    function callback(error, response, body) {
-      if (!error && response.statusCode === 200) {
-        let info = JSON.parse(body);
-        console.log(info);
-      } else if (response.statusCode === 401) {
-        refresh.requestNewAccessToken('google', user.google.refreshToken, (err, accessToken) => {
-          if (err || !accessToken) { return send401Response(); }
-          console.log(accessToken, 'new access_token');
-          const query = { _id: user._id };
-          const update = { 'google.accessToken': accessToken };
-          // Save the new accessToken for future use
-          User.updateUser(query, update, (err, userUpdated) => {
-            if (err) {
-              throw err;
-            }
-            console.log('new refreshToken', userUpdated.google);
-            request(options, callback);
-          });
-        });
-      }
-    }
-    console.log('chamou');
-    console.log(options.url, options.headers);
-    request(options, callback);
-  });
-}
+//     function callback(error, response, body) {
+//       if (!error && response.statusCode === 200) {
+//         let info = JSON.parse(body);
+//         console.log(info);
+//       } else if (response.statusCode === 401) {
+//         refresh.requestNewAccessToken('google', user.google.refreshToken, (err, accessToken) => {
+//           if (err || !accessToken) { return send401Response(); }
+//           console.log(accessToken, 'new access_token');
+//           const query = { _id: user._id };
+//           const update = { 'google.accessToken': accessToken };
+//           // Save the new accessToken for future use
+//           User.updateUser(query, update, (err, userUpdated) => {
+//             if (err) {
+//               throw err;
+//             }
+//             console.log('new refreshToken', userUpdated.google);
+//             request(options, callback);
+//           });
+//         });
+//       }
+//     }
+//     console.log('chamou');
+//     console.log(options.url, options.headers);
+//     request(options, callback);
+//   });
+// }
 
 function isLoggedIn(req, res, next) {
   // if user is authenticated in the session, carry on
@@ -130,18 +130,18 @@ function isLoggedIn(req, res, next) {
   return res.redirect('/');
 }
 
-function ensureAuthorized(req, res, next) {
-  let bearerToken;
-  const bearerHeader = req.headers['authorization'];
-  if (typeof bearerHeader !== 'undefined') {
-    const bearer = bearerHeader.split(' ');
-    bearerToken = bearer[1];
-    req.token = bearerToken;
-    next();
-  } else {
-    res.send(403);
-  }
-}
+// function ensureAuthorized(req, res, next) {
+//   let bearerToken;
+//   const bearerHeader = req.headers['authorization'];
+//   if (typeof bearerHeader !== 'undefined') {
+//     const bearer = bearerHeader.split(' ');
+//     bearerToken = bearer[1];
+//     req.token = bearerToken;
+//     next();
+//   } else {
+//     res.send(403);
+//   }
+// }
 
 const router = express.Router(); // eslint-disable-line
 router.get('/', (req, res) => {
@@ -167,7 +167,7 @@ function validateRequest(req, res, next) {
     return res.status(401).json({ error: 'Token invalid' });
   } else {
     console.log('e ai', userToken);
-    User.findByToken(userToken, (err) => {
+    return User.findByToken(userToken, (err) => {
       if (err) {
         console.log(err);
         return res.status(401).json({ error: err });
@@ -178,8 +178,8 @@ function validateRequest(req, res, next) {
 }
 
 router.get('/api/codes', validateRequest, (req, res) => {
-  const bearerHeader = req.headers['authorization'];
-  console.log(bearerHeader);
+  // const bearerHeader = req.headers['authorization'];
+  // console.log(bearerHeader);
   // if (req.headers['authorization'] !== "Bearer some bs") {
   //   return res.status(401).send('Unauthorized');
   // }
@@ -208,7 +208,7 @@ router.get('/api/books', validateRequest, (req, res) => {
       return res.status(401).end();
     }
     const options = {
-      url: `https://www.googleapis.com/books/v1/volumes?q=livros&startIndex=${startIndex}&maxResults=40&key=z0rlMy9mmp0d-ZT-uCkhdFkF`,
+      url: `https://www.googleapis.com/books/v1/volumes?q=livros&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`,
       headers: {
         Authorization: `Bearer ${user.google.accessToken}`
       }
@@ -245,19 +245,19 @@ router.get('/api/books', validateRequest, (req, res) => {
   });
 });
 
-router.post('/token', function (req, res) {
-  if (req.body.username === 'login' && req.body.password === 'ok') {
-    res.send({ access_token: "some bs" });
-  } else {
-    res.status(400).send({ error: "invalid_grant" });
-  }
-});
+// router.post('/token', (req, res) => {
+//   if (req.body.username === 'login' && req.body.password === 'ok') {
+//     res.send({ access_token: "some bs" });
+//   } else {
+//     res.status(400).send({ error: 'invalid_grant' });
+//   }
+// });
 
 router.get('/auth/google',
   passport.authenticate('google', {
     scope: ['https://www.googleapis.com/auth/books', 'profile', 'email'],
     accessType: 'offline',
-    approvalPrompt: 'force'
+    approvalPrompt: 'auto'
   }));
 
 router.get('/auth/google/callback',

@@ -43,7 +43,7 @@ const userMethods = {
       if (err) {
         return done(err);
       }
-      console.log(userFound.google.id);
+      // console.log(userFound.google.id);
       // if the userFound is found, then log them in
       if (userFound) {
         userFound.google.id = user.profile.id;
@@ -59,6 +59,8 @@ const userMethods = {
       } else {
         // if there is no user found with that facebook id, create them
         const newUser = new User();
+
+        console.log('refreshToken', user, user.refreshToken);
 
         // set all of the facebook information in our user model
         newUser.google.id = user.profile.id; // set the users google id
