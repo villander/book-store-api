@@ -2,6 +2,8 @@
 // app/models/user.js
 // load the things we need
 import mongoose from 'mongoose';
+import request from 'request';
+import _ from 'lodash';
 
 // define the schema for our user model
 const userSchema = mongoose.Schema({
@@ -27,7 +29,9 @@ const userSchema = mongoose.Schema({
     accessToken: String,
     refreshToken: String,
     email: String,
-    name: String
+    name: String,
+    userID: String,
+    favoriteInfo: {}
   }
 
 });
@@ -57,29 +61,55 @@ const userMethods = {
           return done(null, userFound); // user found, return that user
         });
       } else {
-        // if there is no user found with that facebook id, create them
-        const newUser = new User();
-
-        console.log('refreshToken', user, user.refreshToken);
-
-        // set all of the facebook information in our user model
-        newUser.google.id = user.profile.id; // set the users google id
-        newUser.google.accessToken = user.accessToken;
-        newUser.google.refreshToken = user.refreshToken;
-        newUser.google.name = user.profile.displayName;
-        newUser.google.email = user.profile.emails[0].value; // pull the first email
-        // newUser.google.email = profile.emails[0].value;
-
-        // save our user to the database
-        newUser.save((error) => {
-          if (error) {
-            throw error;
+        // if there is no user found with that google id, create them
+        const options = {
+          url: `https://www.googleapis.com/books/v1/mylibrary/bookshelves?key=Z-RmqwmHinAfC-m3azRm38Dc`,
+          headers: {
+            Authorization: `Bearer ${user.accessToken}`
           }
-          // console.log(newUser);
+        };
 
-          // if successful, return the new user
-          return done(null, newUser);
-        });
+        function callback(error, response, body) {
+          console.log(response.statusCode, 'favelou');
+          if (!error && response.statusCode === 200) {
+            const info = JSON.parse(body);
+            const selfLink = info.items[0].selfLink;
+            const userID = selfLink.split('/users/')[1].split('/bookshelves/')[0];
+
+            const favoriteInfo = _.find(info.items, ['id', 0]);
+
+            console.log('user id: ', userID);
+            console.log('user favorite: ', favoriteInfo);
+
+            const newUser = new User();
+
+            console.log('refreshToken', user.refreshToken);
+
+            // set all of the facebook information in our user model
+            newUser.google.id = user.profile.id; // set the users google id
+            newUser.google.accessToken = user.accessToken;
+            newUser.google.refreshToken = user.refreshToken;
+            newUser.google.userID = userID;
+            newUser.google.favoriteInfo = favoriteInfo;
+            newUser.google.name = user.profile.displayName;
+            newUser.google.email = user.profile.emails[0].value; // pull the first email
+            // newUser.google.email = profile.emails[0].value;
+
+            // save our user to the database
+            newUser.save((saveError) => {
+              if (saveError) {
+                throw saveError;
+              }
+              // console.log(newUser);
+
+              // if successful, return the new user
+              return done(null, newUser);
+            });
+          } else if (response.statusCode === 401) {
+            console.log('error: ', error);
+          }
+        }
+        request(options, callback);
       }
     });
   },
@@ -89,7 +119,7 @@ const userMethods = {
       if (error) {
         return callback(error);
       }
-      
+
       return callback(null, user);
     });
   },

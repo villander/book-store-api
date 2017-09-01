@@ -263,6 +263,7 @@ router.get('/auth/google',
 router.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
+    console.log('user: ', req.user);
     // Successful authentication, redirect home.
     res.redirect('/logado');
   });
