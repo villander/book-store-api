@@ -6,7 +6,7 @@
   "scripts": {
     "build-dev": "NODE_ENV=production rm -rf dist/ && babel -d dist/ src/ && nodemon dist/index.js",
     "dev": "NODE_ENV=development nodemon index.js",
-    "start": "NODE_ENV=production node dist/index.js",
+    "start": "NODE_ENV=production node index.js",
     "test": "NODE_ENV=test mocha --timeout 300000 --compilers js:babel-register"
   },
   "author": "",
