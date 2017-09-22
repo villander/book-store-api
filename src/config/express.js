@@ -5,6 +5,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../model';
 import db from './db'; // eslint-disable-line
+import configAuth from './auth';
 import cors from 'cors';
 import session from 'express-session';
 import refresh from 'passport-oauth2-refresh';
@@ -54,10 +55,12 @@ passport.deserializeUser((id, done) => {
   });
 });
 
+const { clientID, clientSecret, callbackURL } = configAuth[process.env.NODE_ENV].googleAuth;
+
 const strategy = new GoogleStrategy({
-  clientID: '102952194911-215ajpdnkuh2uviocad792pmfam1jif2',
-  clientSecret: 'Z-RmqwmHinAfC-m3azRm38Dc',
-  callbackURL: 'http://localhost:3000/auth/google/callback'
+  clientID,
+  clientSecret,
+  callbackURL
 }, (accessToken, refreshToken, profile, done) => {
   // User.findOrCreate({ googleId: profile.id }, (err, user) => {
   //   return cb(err, user);

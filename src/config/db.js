@@ -4,6 +4,7 @@ const config = {};
 
 config.mongoURI = {
   development: 'mongodb://mano:123@ds055575.mongolab.com:55575/mano',
+  production: 'mongodb://mano:123@ds055575.mongolab.com:55575/mano',
   test: 'mongodb://mano:123@ds021182.mlab.com:21182/zssn'
 };
 
