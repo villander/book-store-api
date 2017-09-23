@@ -8,7 +8,6 @@
 <body>  
 <script type="text/javascript">
    var user = <%- JSON.stringify(user) %>;
-   console.log(settings.env);
    var urlForProduction = 'https://secure-atoll-22074.herokuapp.com';
    window.opener.postMessage(user, urlForProduction);
    window.close();
