@@ -1,6 +1,5 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import methodOverride from 'method-override';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import User from '../model';
@@ -10,7 +9,6 @@ import cors from 'cors';
 import session from 'express-session';
 import refresh from 'passport-oauth2-refresh';
 import request from 'request';
-import schedule from 'node-schedule';
 
 // import boolParser from 'express-query-boolean';
 
@@ -36,20 +34,18 @@ app.use(session({
 }));
 // app.use(boolParser());
 
-// app.use(methodOverride());
 app.use(passport.initialize());
 app.use(passport.session());
 
 // used to serialize the user for the session
 passport.serializeUser((user, done) => {
   // console.log(user, 'serialize');
-  // console.log(user, 'user');
+  console.log(user.id, 'serialize');
   done(null, user.id);
 });
 
 // used to deserialize the user
 passport.deserializeUser((id, done) => {
-  console.log(id, 'deserialize');
   User.findById(id, (err, user) => {
     done(err, user);
   });
@@ -66,7 +62,6 @@ const strategy = new GoogleStrategy({
   //   return cb(err, user);
   // });
   const user = { profile, accessToken, refreshToken };
-  console.log(user, 'porcaria');
   User.findOrCreate(user, done);
 });
 
@@ -124,27 +119,13 @@ refresh.use(strategy);
 function isLoggedIn(req, res, next) {
   // if user is authenticated in the session, carry on
   // console.log(req.user, 'req.user');
-  console.log(req.isAuthenticated());
+  console.log('uepa', req.isAuthenticated());
   if (req.isAuthenticated()) {
     return next();
   }
-  console.log('deu ruim');
   // if they aren't redirect them to the home page
   return res.redirect('/');
 }
-
-// function ensureAuthorized(req, res, next) {
-//   let bearerToken;
-//   const bearerHeader = req.headers['authorization'];
-//   if (typeof bearerHeader !== 'undefined') {
-//     const bearer = bearerHeader.split(' ');
-//     bearerToken = bearer[1];
-//     req.token = bearerToken;
-//     next();
-//   } else {
-//     res.send(403);
-//   }
-// }
 
 const router = express.Router(); // eslint-disable-line
 router.get('/', (req, res) => {
@@ -157,26 +138,31 @@ router.get('/logado', isLoggedIn, (req, res) => {
   // schedule.scheduleJob(rule, function () {
   //   requestBooks(req, res);
   // });
-  res.render('after-auth.ejs', { user: req.user });
+  const environment = process.env.NODE_ENV;
+  res.render(`${environment}-auth.ejs`, { user: req.user });
   // res.render('mano.ejs'); // load the index.ejs file
 });
 
 function validateRequest(req, res, next) {
+  console.log('valida');
   const bearerHeader = req.headers['authorization'];
-  console.log(bearerHeader);
+  const userId = req.headers['x-key'];
   const userToken = bearerHeader.split(' ')[1];
-  console.log(userToken, 'userToken');
-  if (userToken === 'null' || userToken === 'undefined') {
-    return res.status(401).json({ error: 'Token invalid' });
-  } else {
-    console.log('e ai', userToken);
-    return User.findByToken(userToken, (err) => {
-      if (err) {
-        console.log(err);
+
+  if (userToken || userId) {
+    return User.findByGoogleId(userId, (err, user) => {
+      if (err || user === null) {
         return res.status(401).json({ error: err });
+      } else {
+        if (user.google.accessToken !== userToken) {
+          return res.status(401).json({ error: 'Token expired' });
+        }
+        // req.user = user;
+        return next();
       }
-      return next();
     });
+  } else {
+    return res.status(401).json({ error: 'Token or user invalid' });
   }
 }
 
@@ -194,9 +180,64 @@ router.get('/api/codes', validateRequest, (req, res) => {
   });
 });
 
+router.get('/api/books/:id', validateRequest, (req, res) => {
+  const options = {
+    url: `https://www.googleapis.com/books/v1/volumes/${req.params.id}`
+  };
+
+  function callback(error, response, body) {
+    if (!error && response.statusCode === 200) {
+      const book = JSON.parse(body);
+      return res.status(200).json({ book });
+    } else if (response.statusCode === 401) {
+      return res.status(401).end();
+    }
+  }
+  request(options, callback);
+});
+
+router.get('/api/wishlists/', validateRequest, (req, res) => {
+  const userId = req.headers['x-key'];
+  User.getWishlist(userId, (err, wishlist) => {
+    if (err || !wishlist) {
+      console.log(err);
+      console.log('wishlist', wishlist);
+      return res.status(500).json({
+        message: 'Error accessing database.'
+      });
+    }
+    return res.status(200).json({ wishlist });
+  });
+});
+
+
+router.post('/api/wishlists/', validateRequest, (req, res) => {
+  const userId = req.headers['x-key'];
+  const item = req.body.wishlist;
+  User.addWishlistItem(userId, item, (err, wishlist) => {
+    if (err || !wishlist) {
+      return res.status(401).end();
+    }
+    return res.status(201).json({ wishlist });
+  });
+});
+
+router.delete('/api/wishlists/:id', validateRequest, (req, res) => {
+  const userId = req.headers['x-key'];
+  console.log(req.params);
+  const item = { id: req.params.id };
+  User.removeWishlistItem(userId, item, (err, wishlist) => {
+    if (err || !wishlist) {
+      return res.status(401).end();
+    }
+    console.log(wishlist);
+    return res.status(201).json({ wishlist });
+  });
+});
+
 router.get('/api/books', validateRequest, (req, res) => {
+  console.log(req.isAuthenticated(), 'está auth');
   console.log(req.user, 'req.user');
-  console.log(req.isAuthenticated(), 'isatuhsdf');
   const bearerHeader = req.headers.authorization;
   const userToken = bearerHeader.split(' ')[1];
   let startIndex = 0;
@@ -210,6 +251,7 @@ router.get('/api/books', validateRequest, (req, res) => {
     if (err || !user) {
       return res.status(401).end();
     }
+    // https://www.googleapis.com/books/v1/volumes?q=poesia+javascript
     const options = {
       url: `https://www.googleapis.com/books/v1/volumes?q=livros&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`,
       headers: {
@@ -220,7 +262,6 @@ router.get('/api/books', validateRequest, (req, res) => {
     const books = [];
 
     function callback(error, response, body) {
-      console.log(response.statusCode, 'favelou');
       if (!error && response.statusCode === 200) {
         const info = JSON.parse(body);
         info.items.forEach((book) => {
@@ -272,9 +313,11 @@ router.get('/auth/google/callback',
   });
 
 // route for logging out
-app.get('/logout', (req, res) => {
+app.get('/api/logout', (req, res) => {
   req.logout();
-  res.redirect('/');
+  res.status(200).json({
+    status: 'Bye!'
+  });
 });
 
 app.use('/', router);

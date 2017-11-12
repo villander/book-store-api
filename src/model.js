@@ -24,6 +24,14 @@ const userSchema = mongoose.Schema({
     displayName: String,
     username: String
   },
+  wishlist: [{
+    id: String,
+    bookId: String,
+    title: String,
+    img: String,
+    author: String,
+    book: String
+  }],
   google: {
     id: String,
     accessToken: String,
@@ -39,6 +47,67 @@ const userSchema = mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 const userMethods = {
+  getWishlist(userGoogleId, done) {
+    User.findOne({
+      'google.id': userGoogleId
+    }, (err, userFound) => {
+      if (err || userFound === null) {
+        done(err);
+      }
+
+      return done(null, userFound.wishlist);
+    });
+  },
+
+  addWishlistItem(userGoogleId, item, done) {
+    User.findOne({
+      'google.id': userGoogleId
+    }, (err, userFound) => {
+      if (err || userFound === null) {
+        done(err);
+      }
+
+      userFound.wishlist.push(item);
+      userFound.save((error, updatedUser) => {
+        if (error || updatedUser === null) {
+          done(error);
+        }
+
+        const book = updatedUser.wishlist.find((element) => {
+          return element.bookId === item.bookId;
+        });
+
+        done(null, book);
+      });
+    });
+  },
+
+  removeWishlistItem(userGoogleId, item, done) {
+    User.findOne({
+      'google.id': userGoogleId
+    }, (err, userFound) => {
+      if (err || userFound === null) {
+        done(err);
+      }
+
+      const prodIndex = userFound.wishlist.findIndex((product) => {
+        return product.bookId === item.id;
+      });
+
+      if (prodIndex !== -1) {
+        userFound.wishlist.splice(prodIndex, 1);
+      }
+
+      userFound.save((error, updatedUser) => {
+        if (error || updatedUser === null) {
+          done(error);
+        }
+
+        done(null, updatedUser.wishlist);
+      });
+    });
+  },
+
   findOrCreate(user, done) {
     // console.log(user.refreshToken, 'refreshToken');
     User.findOne({ 'google.id': user.profile.id }, (err, userFound) => {
@@ -115,6 +184,17 @@ const userMethods = {
   },
   findById(id, callback) {
     const query = { _id: id };
+    User.findOne(query, (error, user) => {
+      if (error) {
+        return callback(error);
+      }
+
+      return callback(null, user);
+    });
+  },
+
+  findByGoogleId(id, callback) {
+    const query = { 'google.id': id };
     User.findOne(query, (error, user) => {
       if (error) {
         return callback(error);
