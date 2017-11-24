@@ -257,6 +257,7 @@ router.get('/api/books', validateRequest, (req, res) => {
       let url;
 
       if (user.google.favoriteInfo) {
+        console.log(user.google);
         // const { favoriteInfo } = user.google;
         // let maxResults = (40 / favoriteInfo.length);
         // let startIndexInfo = (((Number(req.query.page)) * maxResults) - maxResults);
@@ -285,9 +286,12 @@ router.get('/api/books', validateRequest, (req, res) => {
       function callback(error, response, body) {
         if (!error && response.statusCode === 200) {
           const info = JSON.parse(body);
-          info.items.forEach((book) => {
-            books.push(book);
-          });
+          console.log('info', info);
+          if (info.items) {
+            info.items.forEach((book) => {
+              books.push(book);
+            });
+          }
           const countDecimals = (value) => {
             if (Math.floor(value) === value) return 0;
             return value.toString().split('.')[1].length || 0;
