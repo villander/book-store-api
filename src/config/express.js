@@ -281,6 +281,8 @@ router.get('/api/books', validateRequest, (req, res) => {
         }
       };
 
+      console.log(options.url, options.headers.Authorization);
+
       const books = [];
 
       function callback(error, response, body) {
