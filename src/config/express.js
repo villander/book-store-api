@@ -269,7 +269,7 @@ router.get('/api/books', validateRequest, (req, res) => {
         // }
         const category = user.google.favoriteInfo[0].volumeInfo.categories[0];
         const author = user.google.favoriteInfo[0].volumeInfo.authors[0];
-        url = `https://www.googleapis.com/books/v1/volumes?q=${author}+subject:${category}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
+        url = `https://www.googleapis.com/books/v1/volumes?q=${category}+inauthor:${author}&subject:${category}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
       } else {
         url = `https://www.googleapis.com/books/v1/volumes?q=''&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
       }
