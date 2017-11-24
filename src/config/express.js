@@ -9,6 +9,7 @@ import cors from 'cors';
 import session from 'express-session';
 import refresh from 'passport-oauth2-refresh';
 import request from 'request';
+import Promise from 'bluebird';
 
 // import boolParser from 'express-query-boolean';
 
@@ -237,56 +238,108 @@ router.delete('/api/wishlists/:id', validateRequest, (req, res) => {
 
 router.get('/api/books', validateRequest, (req, res) => {
   console.log(req.isAuthenticated(), 'está auth');
-  console.log(req.user, 'req.user');
   const bearerHeader = req.headers.authorization;
   const userToken = bearerHeader.split(' ')[1];
-  let startIndex = 0;
-  if (req.query.page === '1') {
-    startIndex = 0;
-  } else {
-    startIndex = (((Number(req.query.page)) * 40) - 40);
-  }
 
-  User.findByToken(userToken, (err, user) => {
-    if (err || !user) {
-      return res.status(401).end();
+  if (req.query.page) {
+    let startIndex = 0;
+    if (req.query.page === '1') {
+      startIndex = 0;
+    } else {
+      startIndex = (((Number(req.query.page)) * 40) - 40);
     }
-    // https://www.googleapis.com/books/v1/volumes?q=poesia+javascript
-    const options = {
-      url: `https://www.googleapis.com/books/v1/volumes?q=livros&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`,
-      headers: {
-        Authorization: `Bearer ${user.google.accessToken}`
-      }
-    };
 
-    const books = [];
-
-    function callback(error, response, body) {
-      if (!error && response.statusCode === 200) {
-        const info = JSON.parse(body);
-        info.items.forEach((book) => {
-          books.push(book);
-        });
-        const countDecimals = (value) => {
-          if (Math.floor(value) === value) return 0;
-          return value.toString().split('.')[1].length || 0;
-        };
-        const pagesPerItens = ((info.totalItems) / 40);
-        const totalPagesIsDecimal = countDecimals(pagesPerItens);
-        let totalPages;
-        if (totalPagesIsDecimal) {
-          totalPages = (totalPagesIsDecimal ? Math.trunc(pagesPerItens) + 1 : pagesPerItens);
-        }
-        const meta = {
-          total_pages: totalPages,
-        };
-        return res.status(200).json({ books, meta });
-      } else if (response.statusCode === 401) {
+    User.findByToken(userToken, (err, user) => {
+      if (err || !user) {
         return res.status(401).end();
       }
+
+      let url;
+
+      if (user.google.favoriteInfo) {
+        // const { favoriteInfo } = user.google;
+        // let maxResults = (40 / favoriteInfo.length);
+        // let startIndexInfo = (((Number(req.query.page)) * maxResults) - maxResults);
+        // for (let i = 0, tam = favoriteInfo.length; i < tam; ++i) {
+        //   const category = favoriteInfo[i].volumeInfo.categories[0];
+        //   const author = favoriteInfo[i].volumeInfo.authors[0];
+
+        //   url = `https://www.googleapis.com/books/v1/volumes?q=${author}+subject:${category}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
+        // }
+        const category = user.google.favoriteInfo[0].volumeInfo.categories[0];
+        const author = user.google.favoriteInfo[0].volumeInfo.authors[0];
+        url = `https://www.googleapis.com/books/v1/volumes?q=${author}+subject:${category}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
+      } else {
+        url = `https://www.googleapis.com/books/v1/volumes?q=''&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
+      }
+      // https://www.googleapis.com/books/v1/volumes?q=poesia+javascript
+      const options = {
+        url,
+        headers: {
+          Authorization: `Bearer ${user.google.accessToken}`
+        }
+      };
+
+      const books = [];
+
+      function callback(error, response, body) {
+        if (!error && response.statusCode === 200) {
+          const info = JSON.parse(body);
+          info.items.forEach((book) => {
+            books.push(book);
+          });
+          const countDecimals = (value) => {
+            if (Math.floor(value) === value) return 0;
+            return value.toString().split('.')[1].length || 0;
+          };
+          const pagesPerItens = ((info.totalItems) / 40);
+          const totalPagesIsDecimal = countDecimals(pagesPerItens);
+          let totalPages;
+          if (totalPagesIsDecimal) {
+            totalPages = (totalPagesIsDecimal ? Math.trunc(pagesPerItens) + 1 : pagesPerItens);
+          }
+          const meta = {
+            total_pages: totalPages,
+          };
+          return res.status(200).json({ books, meta });
+        } else if (response.statusCode === 401) {
+          return res.status(401).end();
+        }
+      }
+      request(options, callback);
+    });
+  } else if (req.query.ids) {
+    // buscar todos livros no carrinho
+    console.log(req.query.ids);
+    const bookIds = req.query.ids;
+    const books = [];
+    let promise;
+
+    for (let i = 0; i < bookIds.length; ++i) {
+      const options = {
+        url: `https://www.googleapis.com/books/v1/volumes/${bookIds[i]}`
+      };
+
+      promise = new Promise(function(resolve, reject) {
+        request(options, function(error, response, body) {
+          if (!error && response.statusCode === 200) {
+            const book = JSON.parse(body);
+            resolve(book);
+          } else if (response.statusCode === 401) {
+            reject();
+          }
+        });
+      });
+
+      books.push(promise);
     }
-    request(options, callback);
-  });
+    return Promise.all(books).then((booksResolved) => {
+      console.log(booksResolved);
+      return res.status(200).json({ books: booksResolved });
+    }).catch(() => {
+      return res.status(401).end();
+    });
+  }
 });
 
 // router.post('/token', (req, res) => {

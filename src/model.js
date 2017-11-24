@@ -132,7 +132,7 @@ const userMethods = {
       } else {
         // if there is no user found with that google id, create them
         const options = {
-          url: `https://www.googleapis.com/books/v1/mylibrary/bookshelves?key=Z-RmqwmHinAfC-m3azRm38Dc`,
+          url: `https://www.googleapis.com/books/v1/mylibrary/bookshelves/0/volumes?key=Z-RmqwmHinAfC-m3azRm38Dc`,
           headers: {
             Authorization: `Bearer ${user.accessToken}`
           }
@@ -142,12 +142,12 @@ const userMethods = {
           console.log(response.statusCode, 'favelou');
           if (!error && response.statusCode === 200) {
             const info = JSON.parse(body);
-            const selfLink = info.items[0].selfLink;
-            const userID = selfLink.split('/users/')[1].split('/bookshelves/')[0];
+            // const selfLink = info.items[0].selfLink;
+            // const userID = selfLink.split('/users/')[1].split('/bookshelves/')[0];
 
-            const favoriteInfo = _.find(info.items, ['id', 0]);
+            const favoriteInfo = info.items;
 
-            console.log('user id: ', userID);
+            // console.log('user id: ', userID);
             console.log('user favorite: ', favoriteInfo);
 
             const newUser = new User();
@@ -158,7 +158,7 @@ const userMethods = {
             newUser.google.id = user.profile.id; // set the users google id
             newUser.google.accessToken = user.accessToken;
             newUser.google.refreshToken = user.refreshToken;
-            newUser.google.userID = userID;
+            // newUser.google.userID = userID;
             newUser.google.favoriteInfo = favoriteInfo;
             newUser.google.name = user.profile.displayName;
             newUser.google.email = user.profile.emails[0].value; // pull the first email
