@@ -257,7 +257,7 @@ router.get('/api/books', validateRequest, (req, res) => {
       let url;
 
       if (user.google.favoriteInfo) {
-        console.log(user.google);
+        console.log(user.google.favoriteInfo.volumeInfo);
         // const { favoriteInfo } = user.google;
         // let maxResults = (40 / favoriteInfo.length);
         // let startIndexInfo = (((Number(req.query.page)) * maxResults) - maxResults);
