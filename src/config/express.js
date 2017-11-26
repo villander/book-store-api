@@ -256,7 +256,7 @@ router.get('/api/books', validateRequest, (req, res) => {
 
       let url;
 
-      if (user.google.favoriteInfo) {
+      if (user.google.favoriteInfo.length > 0) {
         console.log('favorito', user.google.favoriteInfo[0].volumeInfo);
         // const { favoriteInfo } = user.google;
         // let maxResults = (40 / favoriteInfo.length);
@@ -267,8 +267,9 @@ router.get('/api/books', validateRequest, (req, res) => {
 
         //   url = `https://www.googleapis.com/books/v1/volumes?q=${author}+subject:${category}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
         // }
-        const category = user.google.favoriteInfo[0].volumeInfo.categories[0];
-        const author = user.google.favoriteInfo[0].volumeInfo.authors[0];
+        const volumeInfo = user.google.favoriteInfo[0].volumeInfo;
+        const category = volumeInfo.categories.length && volumeInfo.categories[0];
+        const author = volumeInfo.authors.length && volumeInfo.authors[0];
         url = `https://www.googleapis.com/books/v1/volumes?q=${category}+inauthor:${author}&subject:${category}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
       } else {
         url = `https://www.googleapis.com/books/v1/volumes?q=''&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
