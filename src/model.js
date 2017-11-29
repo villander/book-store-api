@@ -32,6 +32,14 @@ const userSchema = mongoose.Schema({
     author: String,
     book: String
   }],
+  booksViewed: [{
+    id: String,
+    bookId: String
+  }],
+  booksPurchased: [{
+    id: String,
+    bookId: String
+  }],
   google: {
     id: String,
     accessToken: String,
@@ -56,6 +64,62 @@ const userMethods = {
       }
 
       return done(null, userFound.wishlist);
+    });
+  },
+
+  addViewedItem(userGoogleId, bookId, done) {
+    User.findOne({
+      'google.id': userGoogleId
+    }, (err, userFound) => {
+      if (err || userFound === null) {
+        done(err);
+      }
+
+      const prodIndex = userFound.booksViewed.findIndex((product) => {
+        return product.bookId === bookId;
+      });
+
+      if (prodIndex !== -1) { // book already registered
+        const book = userFound.booksViewed.find((element) => {
+          return element.bookId === bookId;
+        });
+        done(null, book);
+      } else {
+        userFound.booksViewed.push({ bookId });
+        userFound.save((error, updatedUser) => {
+          if (error || updatedUser === null) {
+            done(error);
+          }
+
+          const book = updatedUser.booksViewed.find((element) => {
+            return element.bookId === bookId;
+          });
+
+          done(null, book);
+        });
+      }
+    });
+  },
+
+  addBooksPurchased(userGoogleId, bookIds, done) {
+    User.findOne({
+      'google.id': userGoogleId
+    }, (err, userFound) => {
+      if (err || userFound === null) {
+        done(err);
+      }
+
+      bookIds.forEach((bookId) => {
+        userFound.booksPurchased.push({ bookId });
+      });
+
+      userFound.save((error, updatedUser) => {
+        if (error || updatedUser === null) {
+          done(error);
+        }
+
+        done(null, updatedUser.booksPurchased);
+      });
     });
   },
 
@@ -139,13 +203,13 @@ const userMethods = {
         };
 
         function callback(error, response, body) {
-          console.log(response.statusCode, 'favelou');
+          console.log(response.statusCode, 'favelou', response.statusCode);
           if (!error && response.statusCode === 200) {
             const info = JSON.parse(body);
             // const selfLink = info.items[0].selfLink;
             // const userID = selfLink.split('/users/')[1].split('/bookshelves/')[0];
 
-            const favoriteInfo = info.items;
+            const favoriteInfo = info.items || [];
 
             // console.log('user id: ', userID);
             console.log('user favorite: ', favoriteInfo);

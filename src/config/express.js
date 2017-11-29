@@ -10,6 +10,7 @@ import session from 'express-session';
 import refresh from 'passport-oauth2-refresh';
 import request from 'request';
 import Promise from 'bluebird';
+const socketIO = require('socket.io');
 
 // import boolParser from 'express-query-boolean';
 
@@ -270,7 +271,8 @@ router.get('/api/books', validateRequest, (req, res) => {
         const volumeInfo = user.google.favoriteInfo[0].volumeInfo;
         const category = volumeInfo.categories && volumeInfo.categories[0];
         const author = volumeInfo.authors && volumeInfo.authors[0];
-        url = `https://www.googleapis.com/books/v1/volumes?q=${category || author}+inauthor:${author}&subject:${category || ''}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
+        const subject = category ? `subject:${category}` : '';
+        url = `https://www.googleapis.com/books/v1/volumes?q=${author}+inauthor:${author}&${subject}&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
       } else {
         url = `https://www.googleapis.com/books/v1/volumes?q=''&startIndex=${startIndex}&maxResults=40&key=Z-RmqwmHinAfC-m3azRm38Dc`;
       }
@@ -421,4 +423,51 @@ app.use((err, req, res, next) => { // eslint-disable-line
   });
 });
 
-export default app;
+app.set('port', (process.env.PORT || 3000));
+
+const server = app.listen(app.get('port'), () => {
+  console.log(`server started on port ${app.get('port')}`);
+});
+
+function registerBooksPurchased(data) {
+  const { userId, bookIds } = data;
+  User.addBooksPurchased(userId, bookIds, (err, booksPurchased) => {
+    if (err || !booksPurchased) {
+      console.log(err);
+    }
+    console.log(booksPurchased);
+    console.log('[books purchased registred]');
+  });
+}
+
+function registerBookViewed(data) {
+  const { userId, bookId } = data;
+  console.log('foi', bookId);
+  User.addViewedItem(userId, bookId, (err, bookViewed) => {
+    if (err || !bookViewed) {
+      console.log(err);
+    }
+    console.log('[book viewed registred]');
+  });
+}
+
+const io = socketIO(server);
+io.sockets.on('connection', (socket) => {
+  console.log('client connect');
+  socket.on('echo', (data) => {
+    io.sockets.emit('message', data);
+  });
+
+  socket.on('booksPurchased', registerBooksPurchased);
+  socket.on('bookViewed', registerBookViewed);
+});
+
+// export default app;
+
+// https://stackoverflow.com/a/33379514
+// http://goldbergyoni.com/checklist-best-practices-of-node-js-error-handling/
+process.on('uncaughtException', (err) => {
+  console.error(`${(new Date).toUTCString()} uncaughtException:`, err.message);
+  console.error(err.stack);
+  process.exit(1);
+});
